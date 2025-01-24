@@ -4,10 +4,13 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
+import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import android.util.Size
+import android.view.Surface
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.camera.core.*
@@ -48,6 +51,13 @@ class MainActivity : ComponentActivity() {
     private var pipeRead: ParcelFileDescriptor? = null
     private var pipeWrite: ParcelFileDescriptor? = null
     private var outputStream: FileOutputStream? = null
+
+    // Variables pour la résolution de l'image
+    private var imageWidth: Int = 640
+    private var imageHeight: Int = 480
+
+    // Format de couleur supporté
+    private var supportedColorFormat: Int = MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +107,8 @@ class MainActivity : ComponentActivity() {
             }
 
             val preview = CameraPreview.Builder()
+                .setTargetResolution(Size(imageWidth, imageHeight)) // Définir la résolution cible
+                .setTargetRotation(Surface.ROTATION_0)
                 .build()
                 .also { cameraPreview ->
                     cameraPreview.setSurfaceProvider(previewView.surfaceProvider)
@@ -104,7 +116,9 @@ class MainActivity : ComponentActivity() {
 
             // Utiliser ImageAnalysis pour capturer les frames
             val imageAnalysis = ImageAnalysis.Builder()
+                .setTargetResolution(Size(imageWidth, imageHeight)) // Définir la résolution cible
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                 .build()
 
             imageAnalysis.setAnalyzer(cameraExecutor) { image: ImageProxy ->
@@ -122,8 +136,7 @@ class MainActivity : ComponentActivity() {
                     imageAnalysis
                 )
 
-                // Démarrer l'encodage HLS et le serveur HLS après le démarrage de la caméra
-                startHLSEncoding()
+                // Démarrer le serveur HLS
                 startHlsServer()
 
             } catch (exc: Exception) {
@@ -135,6 +148,14 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalGetImage::class)
     private fun processImage(image: ImageProxy) {
+        Log.d("processImage", "Image size: ${image.width} x ${image.height}")
+        if (mediaCodec == null) {
+            // Initialiser MediaCodec avec les dimensions de l'image
+            imageWidth = image.width
+            imageHeight = image.height
+            startHLSEncoding()
+        }
+
         val mediaCodec = mediaCodec ?: return
 
         val inputBufferIndex = mediaCodec.dequeueInputBuffer(0)
@@ -142,7 +163,7 @@ class MainActivity : ComponentActivity() {
             val inputBuffer = mediaCodec.getInputBuffer(inputBufferIndex)
             inputBuffer?.clear()
 
-            val yuvData = YUV_420_888toNV21(image)
+            val yuvData = YUV_420_888toNV12(image)
             inputBuffer?.put(yuvData)
 
             mediaCodec.queueInputBuffer(
@@ -181,34 +202,75 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalGetImage::class)
-    private fun YUV_420_888toNV21(image: ImageProxy): ByteArray {
-        val ySize = image.width * image.height
-        val nv21 = ByteArray(ySize + ySize / 2)
+    private fun YUV_420_888toNV12(image: ImageProxy): ByteArray {
+        val width = image.width
+        val height = image.height
 
-        // Remplir le tableau NV21 avec les données Y
-        image.planes[0].buffer.get(nv21, 0, ySize)
+        val ySize = width * height
+        val uvSize = width * height / 2
+        val nv12 = ByteArray(ySize + uvSize)
 
-        val uBuffer = image.planes[1].buffer
-        val vBuffer = image.planes[2].buffer
+        val yPlane = image.planes[0]
+        val uPlane = image.planes[1]
+        val vPlane = image.planes[2]
 
-        val chromaRowStride = image.planes[1].rowStride
-        val chromaPixelStride = image.planes[1].pixelStride
+        copyPlane(yPlane, nv12, 0, width, height)
+        interleaveUVPlanes(uPlane, vPlane, nv12, ySize, width, height)
 
-        // Position de départ pour les données UV
-        var offset = ySize
-
-        for (row in 0 until image.height / 2) {
-            for (col in 0 until image.width / 2) {
-                val vuPos = row * chromaRowStride + col * chromaPixelStride
-
-                nv21[offset++] = vBuffer.get(vuPos)
-                nv21[offset++] = uBuffer.get(vuPos)
-            }
-        }
-
-        return nv21
+        return nv12
     }
 
+    private fun copyPlane(plane: ImageProxy.PlaneProxy, output: ByteArray, offset: Int, width: Int, height: Int) {
+        val buffer = plane.buffer
+        buffer.rewind()
+
+        val rowStride = plane.rowStride
+        val pixelStride = plane.pixelStride
+
+        var pos = offset
+        val row = ByteArray(rowStride)
+
+        for (i in 0 until height) {
+            buffer.position(i * rowStride)
+            buffer.get(row, 0, Math.min(rowStride, buffer.remaining()))
+
+            var j = 0
+            while (j < width) {
+                output[pos++] = row[j * pixelStride]
+                j++
+            }
+        }
+    }
+
+    private fun interleaveUVPlanes(uPlane: ImageProxy.PlaneProxy, vPlane: ImageProxy.PlaneProxy, output: ByteArray, offset: Int, width: Int, height: Int) {
+        val uBuffer = uPlane.buffer
+        val vBuffer = vPlane.buffer
+
+        uBuffer.rewind()
+        vBuffer.rewind()
+
+        val rowStride = uPlane.rowStride
+        val pixelStride = uPlane.pixelStride
+
+        val row = ByteArray(rowStride)
+        val rowV = ByteArray(rowStride)
+
+        var pos = offset
+
+        for (i in 0 until height / 2) {
+            uBuffer.position(i * rowStride)
+            vBuffer.position(i * rowStride)
+            uBuffer.get(row, 0, Math.min(rowStride, uBuffer.remaining()))
+            vBuffer.get(rowV, 0, Math.min(rowStride, vBuffer.remaining()))
+
+            var j = 0
+            while (j < width / 2) {
+                output[pos++] = row[j * pixelStride]   // U
+                output[pos++] = rowV[j * pixelStride]  // V
+                j++
+            }
+        }
+    }
 
     private fun stopCamera() {
         if (cameraProvider != null) {
@@ -232,6 +294,19 @@ class MainActivity : ComponentActivity() {
         }
 
         try {
+            // Sélectionner le codec et le format de couleur supporté
+            val codecName = selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC)
+            if (codecName == null) {
+                Log.e("MediaCodec", "Codec AVC non trouvé")
+                return
+            }
+
+            supportedColorFormat = selectColorFormat(codecName, MediaFormat.MIMETYPE_VIDEO_AVC)
+            if (supportedColorFormat == 0) {
+                Log.e("MediaCodec", "Format de couleur approprié non trouvé")
+                return
+            }
+
             // Créer le pipe
             val pipe = ParcelFileDescriptor.createPipe()
             pipeRead = pipe[0]
@@ -261,19 +336,25 @@ class MainActivity : ComponentActivity() {
             )
 
             // Configurer MediaCodec pour encoder en H264
-            val mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, 1280, 720)
+            val mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, imageWidth, imageHeight)
             mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 1250000)
             mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30)
-            mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+            mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, supportedColorFormat)
             mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
 
-            mediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            mediaCodec = MediaCodec.createByCodecName(codecName)
             mediaCodec?.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             mediaCodec?.start()
 
         } catch (e: IOException) {
             e.printStackTrace()
             Log.e("FFmpeg", "Erreur lors de la configuration du pipe.")
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            Log.e("MediaCodec", "Erreur lors de la configuration du MediaCodec : ${e.message}")
+        } catch (e: MediaCodec.CodecException) {
+            e.printStackTrace()
+            Log.e("MediaCodec", "Erreur lors de la configuration du MediaCodec : ${e.message}")
         }
     }
 
@@ -387,6 +468,37 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // Fonctions utilitaires pour sélectionner le codec et le format de couleur
+    private fun selectCodec(mimeType: String): String? {
+        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        val codecs = codecList.codecInfos
+        for (codecInfo in codecs) {
+            if (!codecInfo.isEncoder) continue
+            val types = codecInfo.supportedTypes
+            for (type in types) {
+                if (type.equals(mimeType, ignoreCase = true)) {
+                    return codecInfo.name
+                }
+            }
+        }
+        return null
+    }
+
+    private fun selectColorFormat(codecName: String, mimeType: String): Int {
+        val codecInfo = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.find { it.name == codecName }
+        codecInfo?.let {
+            val capabilities = it.getCapabilitiesForType(mimeType)
+            for (colorFormat in capabilities.colorFormats) {
+                if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar ||
+                    colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar ||
+                    colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible) {
+                    return colorFormat
+                }
+            }
+        }
+        return 0
+    }
 }
 
 // Composables pour l'interface utilisateur
@@ -415,3 +527,4 @@ fun CameraControlButtonPreview() {
         CameraControlButton(onCameraToggle = {})
     }
 }
+

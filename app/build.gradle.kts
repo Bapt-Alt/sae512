@@ -77,6 +77,5 @@ dependencies {
     // Autres dépendances
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.arthenica:ffmpeg-kit-full:4.5.1.LTS")
-
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 }
