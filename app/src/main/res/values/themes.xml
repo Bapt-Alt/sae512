@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.SAE512" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Thème qui hérite du Material Components DayNight NoActionBar -->
+    <style name="Theme.SAE512" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Personnalisez votre thème si nécessaire -->
+    </style>
 </resources>

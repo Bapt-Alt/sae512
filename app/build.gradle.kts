@@ -4,17 +4,19 @@ plugins {
 }
 
 android {
+    // Mettez ici le namespace cohérent avec votre code Kotlin
     namespace = "com.application.sae512"
     compileSdk = 34
 
     defaultConfig {
         applicationId = "com.application.sae512"
-        minSdk = 26 // Vous pouvez ajuster en fonction de vos besoins
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -29,19 +31,23 @@ android {
             )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8 // Ou 11 si nécessaire
+        sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "1.8" // Ou 11 si nécessaire
+        jvmTarget = "1.8"
     }
+
+    // Gardez ces lignes si vous utilisez Jetpack Compose :
     buildFeatures {
         compose = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+
     packagingOptions {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -50,16 +56,16 @@ android {
 }
 
 dependencies {
-
-    // Dépendances pour Jetpack Compose
+    // ---------- Jetpack Compose ----------
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
     implementation("androidx.activity:activity-compose:1.7.2")
     implementation("androidx.compose.ui:ui:1.5.1")
     implementation("androidx.compose.ui:ui-tooling-preview:1.5.1")
     implementation("androidx.compose.material3:material3:1.1.1")
+    implementation("com.google.android.material:material:1.9.0")
 
-    // Dépendances pour les tests
+    // Test dependencies
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
@@ -67,15 +73,35 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling:1.5.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.5.1")
 
-    // Dépendances CameraX
-    implementation("androidx.camera:camera-core:1.3.0")
-    implementation("androidx.camera:camera-camera2:1.3.0")
-    implementation("androidx.camera:camera-lifecycle:1.3.0")
-    implementation("androidx.camera:camera-view:1.3.0")
-    implementation("androidx.camera:camera-video:1.3.0")
+    // ---------- CameraX ----------
+    val cameraX_version = "1.3.0"
+    implementation("androidx.camera:camera-core:$cameraX_version")
+    implementation("androidx.camera:camera-camera2:$cameraX_version")
+    implementation("androidx.camera:camera-lifecycle:$cameraX_version")
+    implementation("androidx.camera:camera-view:$cameraX_version")
+    implementation("androidx.camera:camera-video:$cameraX_version")
 
-    // Autres dépendances
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    // Nécessaire pour éviter les erreurs sur ListenableFuture
+    implementation("androidx.concurrent:concurrent-futures:1.1.0")
+
+    // ---------- FFmpegKit ----------
     implementation("com.arthenica:ffmpeg-kit-full:4.5.1.LTS")
+
+    // ---------- NanoHTTPD (serveur HLS) ----------
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+
+    // ---------- Paho MQTT ----------
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+    implementation("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
+
+    // ---------- Google Play Services (Location) ----------
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    // ---------- AndroidX UI ----------
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // ---------- (Optionnel) Firebase si nécessaire ----------
+    // implementation("com.google.firebase:firebase-firestore-ktx:24.7.1")
+    // (et config Google Services si besoin)
 }

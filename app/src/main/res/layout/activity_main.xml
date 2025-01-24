@@ -1,28 +1,117 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:layout_height="match_parent">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/previewView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/compose_view"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp" />
-
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/compose_view"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="16dp"/>
+        android:orientation="vertical"
+        android:padding="16dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <!-- ========== Aperçu caméra (App 1) ========== -->
+        <androidx.camera.view.PreviewView
+            android:id="@+id/previewView"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/cameraToggleButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Allumer la caméra" />
+
+        <!-- ========== Status général / Logs ========== -->
+        <TextView
+            android:id="@+id/statusTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Status ou logs ici"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+        <!-- ========== Coordonnées GPS (latitude, longitude, altitude) ========== -->
+        <TextView
+            android:id="@+id/coordinatesTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Latitude: ...\nLongitude: ...\nAltitude: ..."
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+        <!-- ========== Bouton MQTT Connect & Publish (App 2) ========== -->
+        <Button
+            android:id="@+id/connectPublishButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Connect and Publish" />
+
+        <!-- ========== Gestion du contact ========== -->
+        <Button
+            android:id="@+id/selectContactButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Select Contact" />
+
+        <TextView
+            android:id="@+id/contactTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Contact: (nom / numéro)" />
+
+        <!-- ========== Affichage Détection de chute ========== -->
+        <TextView
+            android:id="@+id/fallDetectionTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Fall detected!"
+            android:visibility="gone"
+            />
+
+        <!-- ========== Bouton Appel contact ========== -->
+        <Button
+            android:id="@+id/callContactButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Call Contact" />
+
+        <!-- ========== Accéléromètre et Gyroscope ========== -->
+        <TextView
+            android:id="@+id/accelerometerTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Accelerometer: x=..., y=..., z=..." />
+
+        <TextView
+            android:id="@+id/gyroscopeTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Gyroscope: x=..., y=..., z=..." />
+
+        <!-- ========== Compte à rebours ========== -->
+        <TextView
+            android:id="@+id/countdownTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Calling in X seconds..." />
+
+        <!-- ========== Bouton Annuler appel ========== -->
+        <Button
+            android:id="@+id/cancelButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Cancel Call" />
+
+    </LinearLayout>
+</ScrollView>
